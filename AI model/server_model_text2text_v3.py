@@ -8,26 +8,26 @@ app = Flask(__name__)
 CORS(app)
 
 # Configuration
-MODEL_NAME = "google/flan-t5-base"
-MAX_CONTEXT_LENGTH = 512
-MAX_ANSWER_LENGTH = 150
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+MODEL_NAME = "google/flan-t5-large"  # Nazwa modelu NLP
+MAX_CONTEXT_LENGTH = 512  # Maksymalna długość kontekstu
+MAX_ANSWER_LENGTH = 150  # Maksymalna długość odpowiedzi
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Użycie GPU, jeśli dostępne
 
 def log_progress(message):
-    print(message)
-    sys.stdout.flush()
+    print(message)  # Logowanie wiadomości
+    sys.stdout.flush()  # Wymuszenie wypisania na standardowe wyjście
 
 log_progress("Initializing AI server...")
 
 try:
     log_progress("Loading NLP model...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME).to(DEVICE)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)  # Ładowanie tokenizera
+    model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME).to(DEVICE)  # Ładowanie modelu
     generator = pipeline(
         "text2text-generation",
         model=model,
         tokenizer=tokenizer,
-        device=0 if DEVICE == "cuda" else -1
+        device=0 if DEVICE == "cuda" else -1  # Ustawienie urządzenia
     )
     log_progress("Model loaded successfully!")
 except Exception as e:
@@ -36,6 +36,7 @@ except Exception as e:
 
 def load_item_context(item_type):
     try:
+        # Mapowanie typów przedmiotów na pliki
         file_mapping = {
             'diamondpickaxe': 'diamond_pickaxe.txt',
             'whiskyglass': 'whisky_glass.txt',
@@ -44,19 +45,19 @@ def load_item_context(item_type):
             'lumberjackburger': 'lumberjack_burger.txt'
         }
         
-        filename = file_mapping.get(item_type.lower())
+        filename = file_mapping.get(item_type.lower())  # Pobranie nazwy pliku
         if not filename:
-            raise ValueError(f"Unknown item type: {item_type}")
+            raise ValueError(f"Unknown item type: {item_type}")  # Błąd, jeśli typ nieznany
             
         with open(f"items/{filename}", "r", encoding='utf-8') as file:
-            return file.read()
+            return file.read()  # Zwrócenie zawartości pliku
     except Exception as e:
         log_progress(f"Context loading error: {e}")
         return None
 
 def preprocess_context(context):
-    tokens = tokenizer.encode(context, max_length=MAX_CONTEXT_LENGTH, truncation=True)
-    return tokenizer.decode(tokens, skip_special_tokens=True)
+    tokens = tokenizer.encode(context, max_length=MAX_CONTEXT_LENGTH, truncation=True)  # Tokenizacja kontekstu
+    return tokenizer.decode(tokens, skip_special_tokens=True)  # Dekodowanie tokenów
 
 def generate_answer(question, context):
     try:
@@ -66,7 +67,7 @@ Use complete sentences. If information is missing, say "I don't know".
 Context: {context}
 
 Question: {question}
-Answer: According to the available information,"""
+Answer: According to the available information,"""  # Przygotowanie promptu
 
         result = generator(
             prompt,
@@ -80,17 +81,17 @@ Answer: According to the available information,"""
             clean_up_tokenization_spaces=True
         )
         
-        answer = result[0]['generated_text'].strip()
-        answer = answer.replace("According to the available information,", "").strip()
+        answer = result[0]['generated_text'].strip()  # Otrzymanie odpowiedzi
+        answer = answer.replace("According to the available information,", "").strip()  # Usunięcie wstępu
         
         # Formatting rules
         if answer.lower().startswith("the "):
-            answer = answer[0].upper() + answer[1:]
+            answer = answer[0].upper() + answer[1:]  # Ustawienie wielkiej litery na początku
         elif answer:
             answer = answer[0].upper() + answer[1:].lower()
         
         if not answer.endswith('.'):
-            answer += '.'
+            answer += '.'  # Dodanie kropki na końcu
             
         return answer
         
@@ -118,7 +119,7 @@ Refined, complete sentence answer:"""
             prompt,
             max_length=MAX_ANSWER_LENGTH,
             num_return_sequences=1,
-            temperature=0.8,  # Możemy lekko podnieść temperature, aby model był bardziej kreatywny.
+            temperature=0.6,  # Możemy lekko podnieść temperature, aby model był bardziej kreatywny.
             repetition_penalty=1.0,
             do_sample=True,
             top_k=30,
@@ -139,51 +140,31 @@ Refined, complete sentence answer:"""
 @app.route('/generate', methods=['POST'])
 def handle_query():
     try:
-        data = request.json
-        item_type = data.get('itemType')
-        question = data.get('question')
+        data = request.json  # Odczytanie danych JSON
+        item_type = data.get('itemType')  # Pobranie typu przedmiotu
+        question = data.get('question')  # Pobranie pytania
         
         if not item_type or not question:
-            return jsonify({"error": "Missing required parameters"}), 400
+            return jsonify({"error": "Missing required parameters"}), 400  # Błąd, jeśli brakuje parametrów
             
-        context = load_item_context(item_type)
+        context = load_item_context(item_type)  # Załadowanie kontekstu
         if not context:
-            return jsonify({"error": "Context not found"}), 404
+            return jsonify({"error": "Context not found"}), 404  # Błąd, jeśli kontekst nie został znaleziony
             
-        processed_context = preprocess_context(context)
-        answer = generate_answer(question, processed_context)
+        processed_context = preprocess_context(context)  # Przetworzenie kontekstu
+        initial_answer = generate_answer(question, processed_context)  # Generowanie odpowiedzi
+        refined_answer = generate_full_sentence_answer(question, initial_answer)
         
         return jsonify({
-            "response": answer,
-            "contextSnippet": processed_context[:200] + "..."  # For debugging
+            "response": refined_answer,  # Zwracamy już dopracowaną odpowiedź
+            "initialResponse": initial_answer,  # Możemy także zwrócić pierwotną odpowiedź dla porównania
+            "contextSnippet": processed_context[:200] + "..."  # Dla debugowania
         })
         
     except Exception as e:
         log_progress(f"Server error: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/refine', methods=['POST'])
-def refine_query():
-    """
-    Endpoint do dopracowywania odpowiedzi.
-    Oczekuje w danych:
-      - "question": oryginalne zapytanie użytkownika,
-      - "initialAnswer": odpowiedź wygenerowaną w pierwszym kroku.
-    """
-    try:
-        data = request.json
-        question = data.get('question')
-        initial_answer = data.get('initialAnswer')
-        if not question or not initial_answer:
-            return jsonify({"error": "Missing required parameters"}), 400
-            
-        refined_answer = generate_full_sentence_answer(question, initial_answer)
-        return jsonify({
-            "refinedResponse": refined_answer
-        })
-    except Exception as e:
-        log_progress(f"Refinement server error: {e}")
-        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    app.run(port=5000)  # Uruchomienie serwera na porcie 5000
