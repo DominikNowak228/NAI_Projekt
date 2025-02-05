@@ -44,7 +44,7 @@ def load_item_context(item_type):
         if not filename:
             raise ValueError(f"Unknown item type: {item_type}")
             
-        with open(f"items/{filename}", "r", encoding='utf-8') as file:
+        with open(f"./items/{filename}", "r", encoding='utf-8') as file:
             return file.read()
     except Exception as e:
         print(f"Error loading item context: {e}")
