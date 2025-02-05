@@ -10,13 +10,28 @@
 
 1. **Uruchomienie serwera lokalnego**:
    
-   Najpierw musisz uruchomić serwer lokalny, który będzie odpowiedzialny za działanie modelu AI. Możesz to zrobić, uruchamiając jeden z dwóch dostępnych plików w folderze `AI_model`:
+   Najpierw musisz uruchomić serwer lokalny, który będzie odpowiedzialny za działanie modelu AI. Możesz to zrobić, uruchamiając jeden z dostępnych plików w folderze `AI_model` w zależności od potrzebnej wersji modelu:
 
+   - **Dla krótkich odpowiedzi** (model Google FLAN-T5-Base):
+     ```bash
+     python AI_model/server_model_text2text_v1.py
+     ```
+   
+   - **Dla odpowiedzi pełnymi zdaniami (mniejszy model Google FLAN-T5-Base)**:
+     ```bash
+     python AI_model/server_model_text2text_v2.py
+     ```
+   
+   - **Dla odpowiedzi pełnymi zdaniami (większy model Google FLAN-T5-Large)**:
+     ```bash
+     python AI_model/server_model_text2text_v3.py
+     ```
+   
    - **Dla modelu QA**:
      ```bash
      python AI_model/server_model_QA.py
      ```
-
+   
    - **Dla modelu podsumowującego**:
      ```bash
      python AI_model/server_model_summarization.py
@@ -29,7 +44,7 @@
    Po uruchomieniu serwera AI, przejdź do folderu `build_version` i uruchom plik `Nai.exe`:
 
    - Otwórz folder `build_version`
-   - Kliknij dwukrotnie plik `Nai.exe` aby uruchomić grę.
+   - Kliknij dwukrotnie plik `Nai.exe`, aby uruchomić grę.
 
    Gra powinna teraz działać z uruchomionym modelem AI.
 
@@ -39,3 +54,4 @@ Aby zainstalować wszystkie wymagane biblioteki, uruchom poniższą komendę w t
 
 ```bash
 pip install -r requirements.txt
+```
