@@ -3,6 +3,7 @@ from flask_cors import CORS
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 import torch
 import sys
+import time  # Import the time module
 
 # Inicjalizacja aplikacji Flask
 app = Flask(__name__)
@@ -60,6 +61,19 @@ def preprocess_context(context):
     # Tokenizacja kontekstu i skrócenie go do maksymalnej długości
     tokens = tokenizer.encode(context, max_length=MAX_CONTEXT_LENGTH, truncation=True)
     return tokenizer.decode(tokens, skip_special_tokens=True)  # Dekodowanie tokenów
+
+def calculate_metrics(y_true, y_pred):
+    true_positive = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 1 and yp == 1))
+    true_negative = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 0 and yp == 0))
+    false_positive = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 0 and yp == 1))
+    false_negative = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 1 and yp == 0))
+
+    accuracy = (true_positive + true_negative) / len(y_true) if len(y_true) > 0 else 0.0
+    precision = true_positive / (true_positive + false_positive) if (true_positive + false_positive) > 0 else 0.0
+    recall = true_positive / (true_positive + false_negative) if (true_positive + false_negative) > 0 else 0.0
+    f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+
+    log_progress(f"Metrics - Accuracy: {float(accuracy)}, Precision: {float(precision)}, Recall: {float(recall)}, F1 Score: {float(f1)}")
 
 def generate_answer(question, context):
     try:
@@ -157,13 +171,32 @@ def handle_query():
             return jsonify({"error": "Context not found"}), 404  # Błąd, jeśli kontekst nie został znaleziony
             
         processed_context = preprocess_context(context)  # Przetworzenie kontekstu
+        
+        # Start timing
+        start_time = time.time()
+        
         initial_answer = generate_answer(question, processed_context)  # Generowanie wstępnej odpowiedzi
         refined_answer = generate_full_sentence_answer(question, initial_answer)  # Dopracowanie odpowiedzi
         
+        # End timing
+        end_time = time.time()
+        duration = end_time - start_time  # Calculate duration
+        
+        # Rejestruj upływający czas
+        log_progress(f"Time taken to generate answer: {float(duration):.2f} seconds")
+        
+        # Zdefiniuj y_true i y_pred w oparciu o swoją logikę
+        expected_answer = "Expected answer based on your context"  # Zastąp rzeczywistą oczekiwaną logiką odpowiedzi
+        y_true = [1 if expected_answer == refined_answer else 0]  # 1 for correct, 0 for incorrect
+        y_pred = [1 if refined_answer == expected_answer else 0]  # 1 for correct, 0 for incorrect
+        
+        calculate_metrics(y_true, y_pred)  # Rejestruj metryki po wygenerowaniu odpowiedzi
+        
         return jsonify({
-            "response": refined_answer,  # Zwrócenie dopracowanej odpowiedzi
-            "initialResponse": initial_answer,  # Zwrócenie wstępnej odpowiedzi dla porównania
-            "contextSnippet": processed_context[:200] + "..."  # Fragment kontekstu dla debugowania
+            "response": refined_answer,
+            "initialResponse": initial_answer,
+            "contextSnippet": processed_context[:200] + "...",
+            "timeTaken": float(duration)  # Ensure time taken is a float
         })
         
     except Exception as e:
