@@ -1,19 +1,9 @@
-BOOK: "PLEASE, JUST THREE – HOW TO PASS EVERY SUBJECT"
+PLEASE, JUST THREE – HOW TO PASS EVERY SUBJECT
 
-Description: A bestseller among students who have spent years battling exams. This book is packed with tips that are so simple and effective, you’ll wonder why you didn’t think of them yourself. It’s the perfect read for anyone who believes that “minimal effort, maximum results” is the secret to surviving university. With its straightforward advice, it promises to help students navigate the academic maze with less stress and more success.
-
-History: Written by Dr. Max Chill, a legendary student who never overdid the studying but still managed to graduate with flying colors, this book quickly gained a cult following. The first edition sold faster than free pizza at a campus party, and it became an essential guide for students looking for the secret to exam success without breaking a sweat.
-
-Properties:
-
-Genre: Academic survival guide for the lazy.
-Pages: 32 pages of golden advice (including two bonus pages for coloring when you need to unwind).
-Special Abilities: Known to reduce exam stress by 50%, allowing students to approach exams with a calm demeanor and clear mind.
-Limitations: While it's incredibly effective, it won’t save you if your professor has a particular vendetta against minimal effort.
-Current Status: The book is currently a top-seller on every university campus, regularly flying off the shelves and still a favorite for students looking for quick tips. The new re-release includes additional insights and strategies from "survivor students" who’ve mastered the art of passing exams without breaking a sweat.
-
-Notable Events:
-
-Helped thousands of students pass exams: With its practical, no-nonsense advice, it’s been the key to success for many.
-Once burned at a rally by the "Overachievers Club": The book was famously burned by a group of overly ambitious students who took issue with its “minimal effort” approach.
-Adopted as mandatory reading at some universities: In recognition of its effectiveness, several universities have officially included it in their reading lists for freshmen.
+Title: "PLEASE, JUST THREE – HOW TO PASS EVERY SUBJECT"  
+Author: Dr. Max Chill  
+Format: 32-page guide with 2 bonus coloring pages  
+Purpose: Provides simple, minimal-effort exam tips to reduce stress and improve performance  
+Features: Offers straightforward, practical advice; claims to reduce exam stress by 50%  
+Limitations: May not satisfy professors who demand rigorous study methods  
+History: Became a cult bestseller; infamously burned by the "Overachievers Club"; later adopted as mandatory reading at several universities

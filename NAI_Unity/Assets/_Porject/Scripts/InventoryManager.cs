@@ -5,6 +5,8 @@ using TMPro;
 
 public class InventoryManager : MonoBehaviour
 {
+    public static InventoryManager Instance { get; private set; }
+
     public GameObject[] itemSlots;  // Tablica przechowująca referencje do głównych obiektów ItemSlot
     public int activeSlot = 0;
     public Item[] items; // Tablica przechowująca przedmioty
@@ -16,6 +18,13 @@ public class InventoryManager : MonoBehaviour
     private TextMeshProUGUI yourQuestionText; // Nowe pole
     private TextMeshProUGUI answerText;
     private ItemQueryManager queryManager;
+
+   [SerializeField] private GameObject inputField;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
 
     void Start()
     {
@@ -159,6 +168,7 @@ public class InventoryManager : MonoBehaviour
 
     private void UpdateQueryUI(Item item)
     {
+        inputField.SetActive(true);
         if (item == null)
         {
             ClearQueryUI();
@@ -182,6 +192,7 @@ public class InventoryManager : MonoBehaviour
 
     private void ClearQueryUI()
     {
+        inputField.SetActive(false);
         itemNameText.text = "";
         yourQuestionText.text = "";
         answerText.text = "";
@@ -250,11 +261,13 @@ public class InventoryManager : MonoBehaviour
         {
             string selectedQuestion = items[activeSlot].possibleQuestions[questionNumber - 1];
             Debug.Log($"Wybrane pytanie {questionNumber}: {selectedQuestion}");
-            yourQuestionText.text = selectedQuestion;
-
+            SetYourQuestionText(selectedQuestion);
             // Przekazujemy enum zamiast nazwy pliku
             queryManager.AskQuestion(items[activeSlot].itemType, selectedQuestion);
             answerText.text = "Thinking...";
         }
     }
+
+    public Item GetActiveItem() => items[activeSlot];
+    public void SetYourQuestionText(string text) => yourQuestionText.text = text;
 }

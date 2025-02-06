@@ -3,14 +3,14 @@ from flask_cors import CORS
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 import torch
 import sys
-import time  # Import the time module
+import time  # Import modułu time do pomiaru czasu
 
 # Inicjalizacja aplikacji Flask
 app = Flask(__name__)
 CORS(app)  # Umożliwienie CORS dla aplikacji
 
 # Konfiguracja modelu
-MODEL_NAME = "google/flan-t5-base"  # Nazwa modelu do generowania tekstu
+MODEL_NAME = "google/flan-t5-base"  # Nazwa modelu NLP
 MAX_CONTEXT_LENGTH = 512  # Maksymalna długość kontekstu w tokenach
 MAX_ANSWER_LENGTH = 150  # Maksymalna długość odpowiedzi w tokenach
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Użycie GPU, jeśli dostępne
@@ -62,19 +62,6 @@ def preprocess_context(context):
     tokens = tokenizer.encode(context, max_length=MAX_CONTEXT_LENGTH, truncation=True)
     return tokenizer.decode(tokens, skip_special_tokens=True)  # Dekodowanie tokenów
 
-def calculate_metrics(y_true, y_pred):
-    true_positive = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 1 and yp == 1))
-    true_negative = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 0 and yp == 0))
-    false_positive = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 0 and yp == 1))
-    false_negative = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 1 and yp == 0))
-
-    accuracy = (true_positive + true_negative) / len(y_true) if len(y_true) > 0 else 0.0
-    precision = true_positive / (true_positive + false_positive) if (true_positive + false_positive) > 0 else 0.0
-    recall = true_positive / (true_positive + false_negative) if (true_positive + false_negative) > 0 else 0.0
-    f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
-
-    log_progress(f"Metrics - Accuracy: {float(accuracy)}, Precision: {float(precision)}, Recall: {float(recall)}, F1 Score: {float(f1)}")
-
 def generate_answer(question, context):
     try:
         # Przygotowanie promptu dla modelu
@@ -84,7 +71,7 @@ Use complete sentences. If information is missing, say "I don't know".
 Context: {context}
 
 Question: {question}
-Answer: According to the available information,"""
+Answer: According to the available information,"""  # Przygotowanie promptu
 
         # Generowanie odpowiedzi za pomocą modelu
         result = generator(
@@ -132,14 +119,14 @@ Original Question: {question}
 
 Initial Answer: {initial_answer}
 
-Refined, complete sentence answer:"""
+Refined, complete sentence answer:"""  # Przygotowanie promptu dla dopracowanej odpowiedzi
         
         # Generowanie dopracowanej odpowiedzi
         result = generator(
             prompt,
             max_length=MAX_ANSWER_LENGTH,
             num_return_sequences=1,
-            temperature=0.6,  # Lekko podniesiona temperatura dla większej kreatywności
+            temperature=0.8,  # Lekko podniesiona temperatura dla większej kreatywności
             repetition_penalty=1.0,
             do_sample=True,
             top_k=30,
@@ -155,6 +142,21 @@ Refined, complete sentence answer:"""
     except Exception as e:
         log_progress(f"Refinement generation error: {e}")  # Logowanie błędu podczas dopracowywania odpowiedzi
         return "An error occurred while refining the answer."  # Zwrócenie komunikatu o błędzie
+
+def calculate_metrics(y_true, y_pred):
+    # Obliczanie metryk wydajności
+    true_positive = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 1 and yp == 1))
+    true_negative = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 0 and yp == 0))
+    false_positive = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 0 and yp == 1))
+    false_negative = sum((1 for yt, yp in zip(y_true, y_pred) if yt == 1 and yp == 0))
+
+    # Obliczanie dokładności, precyzji, czułości i F1
+    accuracy = (true_positive + true_negative) / len(y_true) if len(y_true) > 0 else 0.0
+    precision = true_positive / (true_positive + false_positive) if (true_positive + false_positive) > 0 else 0.0
+    recall = true_positive / (true_positive + false_negative) if (true_positive + false_negative) > 0 else 0.0
+    f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+
+    log_progress(f"Metrics - Accuracy: {float(accuracy)}, Precision: {float(precision)}, Recall: {float(recall)}, F1 Score: {float(f1)}")  # Logowanie metryk
 
 @app.route('/generate', methods=['POST'])
 def handle_query():
@@ -173,17 +175,17 @@ def handle_query():
         processed_context = preprocess_context(context)  # Przetworzenie kontekstu
         
         # Start timing
-        start_time = time.time()
+        start_time = time.time()  # Rozpoczęcie pomiaru czasu
         
         initial_answer = generate_answer(question, processed_context)  # Generowanie wstępnej odpowiedzi
         refined_answer = generate_full_sentence_answer(question, initial_answer)  # Dopracowanie odpowiedzi
         
         # End timing
-        end_time = time.time()
-        duration = end_time - start_time  # Calculate duration
+        end_time = time.time()  # Zakończenie pomiaru czasu
+        duration = end_time - start_time  # Oblicz czas trwania
         
         # Rejestruj upływający czas
-        log_progress(f"Time taken to generate answer: {float(duration):.2f} seconds")
+        log_progress(f"Time taken to generate answer: {float(duration):.2f} seconds")  # Logowanie czasu generowania odpowiedzi
         
         # Zdefiniuj y_true i y_pred w oparciu o swoją logikę
         expected_answer = "Expected answer based on your context"  # Zastąp rzeczywistą oczekiwaną logiką odpowiedzi
@@ -193,10 +195,10 @@ def handle_query():
         calculate_metrics(y_true, y_pred)  # Rejestruj metryki po wygenerowaniu odpowiedzi
         
         return jsonify({
-            "response": refined_answer,
-            "initialResponse": initial_answer,
-            "contextSnippet": processed_context[:200] + "...",
-            "timeTaken": float(duration)  # Ensure time taken is a float
+            "response": refined_answer,  # Zwrócenie dopracowanej odpowiedzi
+            "initialResponse": initial_answer,  # Zwrócenie wstępnej odpowiedzi
+            "contextSnippet": processed_context[:200] + "...",  # Fragment kontekstu dla debugowania
+            "timeTaken": float(duration)  # Upewnij się, że czas trwania jest liczbą zmiennoprzecinkową
         })
         
     except Exception as e:

@@ -3,37 +3,30 @@ from flask_cors import CORS
 from transformers import pipeline
 import torch
 import sys
-
-# Inicjalizacja aplikacji Flask
 app = Flask(__name__)
-CORS(app)  # Umożliwienie CORS dla aplikacji
-
+CORS(app)
 def log_progress(message):
-    print(message)  # Logowanie wiadomości
-    sys.stdout.flush()  # Wymuszenie wypisania na standardowe wyjście
-
-log_progress("Starting server initialization...")  # Informacja o rozpoczęciu inicjalizacji serwera
-log_progress("Initializing model loading...")  # Informacja o rozpoczęciu ładowania modelu
-
+    print(message)
+    sys.stdout.flush()
+log_progress("Starting server initialization...")
+log_progress("Initializing model loading...")
 try:
-    model_name = "deepset/roberta-base-squad2"  # Nazwa modelu do zadawania pytań i odpowiedzi (QA)
-    device = "cuda" if torch.cuda.is_available() else "cpu"  # Użycie GPU, jeśli dostępne
+    model_name = "deepset/roberta-base-squad2"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     
-    log_progress(f"Loading QA model on {device}...")  # Informacja o ładowaniu modelu
+    log_progress(f"Loading QA model on {device}...")
     qa_pipeline = pipeline(
-        "question-answering",  # Typ pipeline'u
+        "question-answering",
         model=model_name,
-        device=0 if torch.cuda.is_available() else -1  # Ustawienie urządzenia
+        device=0 if torch.cuda.is_available() else -1
     )
-    log_progress("Model loaded successfully!")  # Informacja o pomyślnym załadowaniu modelu
+    log_progress("Model loaded successfully!")
     
 except Exception as e:
-    log_progress(f"Error during model loading: {str(e)}")  # Logowanie błędu podczas ładowania modelu
+    log_progress(f"Error during model loading: {str(e)}")
     raise
-
 def load_item_context(item_type):
     try:
-        # Mapowanie typów przedmiotów na pliki
         file_mapping = {
             'diamondpickaxe': 'diamond_pickaxe.txt',
             'whiskyglass': 'whisky_glass.txt',
@@ -42,73 +35,70 @@ def load_item_context(item_type):
             'lumberjackburger': 'lumberjack_burger.txt'
         }
         
-        filename = file_mapping.get(item_type.lower())  # Pobranie nazwy pliku
+        filename = file_mapping.get(item_type.lower())
         if not filename:
-            raise ValueError(f"Unknown item type: {item_type}")  # Błąd, jeśli typ nieznany
+            raise ValueError(f"Unknown item type: {item_type}")
             
-        with open(f"./items/{filename}", "r", encoding='utf-8') as file:
-            return file.read()  # Zwrócenie zawartości pliku
+        with open(f"items/{filename}", "r", encoding='utf-8') as file:
+            return file.read()
     except Exception as e:
-        print(f"Error loading item context: {e}")  # Logowanie błędu podczas ładowania kontekstu
+        print(f"Error loading item context: {e}")
         return None
-
 def get_answer(context, question):
     try:
-        log_progress(f"\nProcessing question: {question}")  # Logowanie przetwarzania pytania
+        log_progress(f"\nProcessing question: {question}")
         
-        tokens = qa_pipeline.tokenizer.encode(context)  # Tokenizacja kontekstu
-        if len(tokens) > 450:  # Sprawdzenie długości tokenów
-            log_progress(f"Context too long ({len(tokens)} tokens). Truncating...")  # Logowanie o zbyt długim kontekście
-            tokens = tokens[:450]  # Skrócenie kontekstu
-            context = qa_pipeline.tokenizer.decode(tokens, skip_special_tokens=True)  # Dekodowanie tokenów
+        tokens = qa_pipeline.tokenizer.encode(context)
+        if len(tokens) > 450:
+            log_progress(f"Context too long ({len(tokens)} tokens). Truncating...")
+            tokens = tokens[:450]
+            context = qa_pipeline.tokenizer.decode(tokens, skip_special_tokens=True)
         
-        # Generowanie odpowiedzi za pomocą modelu QA
         result = qa_pipeline(
             question=question,
             context=context,
-            max_answer_len=50,  # Maksymalna długość odpowiedzi
-            handle_impossible_answer=True  # Obsługa pytań bez odpowiedzi
+            max_answer_len=50,
+            handle_impossible_answer=True
         )
         
-        log_progress(f"Answer score: {result['score']:.2f}")  # Logowanie wyniku odpowiedzi
+        log_progress(f"Answer score: {result['score']:.2f}")
         
-        if result['score'] < 0.1:  # Sprawdzenie wyniku odpowiedzi
-            return "Nie mam wystarczających informacji, aby odpowiedzieć na to pytanie."  # Zwrócenie odpowiedzi, jeśli wynik jest zbyt niski
+        if result['score'] < 0.1:
+            return "Nie mam wystarczających informacji, aby odpowiedzieć na to pytanie."
             
-        answer = result['answer'].strip()  # Otrzymanie odpowiedzi
-        log_progress(f"Generated answer: {answer}")  # Logowanie wygenerowanej odpowiedzi
+        answer = result['answer'].strip()
+        log_progress(f"Generated answer: {answer}")
         
-        if len(answer) < 2 or question.lower() in answer.lower():  # Sprawdzenie, czy odpowiedź jest sensowna
+        if len(answer) < 2 or question.lower() in answer.lower():
             return "Nie jestem pewien odpowiedzi na to pytanie."
             
-        return answer  # Zwrócenie odpowiedzi
+        # Prosta, ale kompletna odpowiedź
+        return answer
         
     except Exception as e:
-        log_progress(f"Error in get_answer: {e}")  # Logowanie błędu w funkcji get_answer
-        return "Przepraszam, wystąpił problem z przetworzeniem Twojego pytania."  # Zwrócenie błędu
-
+        log_progress(f"Error in get_answer: {e}")
+        return "Przepraszam, wystąpił problem z przetworzeniem Twojego pytania."
 @app.route('/generate', methods=['POST'])
 def generate():
     try:
-        data = request.json  # Odczytanie danych JSON
-        log_progress(f"\nProcessing request for: {data['itemType']}")  # Logowanie przetwarzania żądania
+        data = request.json
+        log_progress(f"\nProcessing request for: {data['itemType']}")
         
-        item_type = data.get('itemType')  # Pobranie typu przedmiotu
-        question = data.get('question')  # Pobranie pytania
+        item_type = data.get('itemType')
+        question = data.get('question')
         
-        if not item_type or not question:  # Sprawdzenie, czy wymagane parametry są obecne
+        if not item_type or not question:
             return jsonify({"error": "Missing itemType or question"}), 400
             
-        context = load_item_context(item_type)  # Załadowanie kontekstu
+        context = load_item_context(item_type)
         if not context:
             return jsonify({"error": "Could not load item context"}), 404
             
-        answer = get_answer(context, question)  # Uzyskanie odpowiedzi
-        return jsonify({"response": answer})  # Zwrócenie odpowiedzi
+        answer = get_answer(context, question)
+        return jsonify({"response": answer})
         
     except Exception as e:
-        log_progress(f"Error occurred: {e}")  # Logowanie błędu
+        log_progress(f"Error occurred: {e}")
         return jsonify({"error": str(e)}), 500
-
 if __name__ == '__main__':
-    app.run(port=5000)  # Uruchomienie serwera na porcie 5000
+    app.run(port=5000)  # Używamy innego portu niż index.py 
